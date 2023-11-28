@@ -12,7 +12,6 @@ async function bootstrap() {
     .setDescription('The soccer API description')
     .setVersion('1.0')
     .addTag('app')
-    .addTag('competitions')
     .addTag('players')
     .addTag('teams')
     .build();

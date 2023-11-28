@@ -6,6 +6,10 @@ import { Competition } from '../competition/entity/competition.model';
 import { ObjectId } from 'mongodb';
 import mongoose from 'mongoose';
 import { CompetitionRepository } from '../competition/competition.repository';
+import { CoachRepository } from './coach.repository';
+import { PlayerRepository } from './player.repository';
+import { TeamRepository } from '../team/team.repository';
+import { getModelToken } from '@nestjs/mongoose';
 
 describe('PlayerController', () => {
   let playerController: PlayerController;
@@ -14,7 +18,23 @@ describe('PlayerController', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [PlayerController],
-      providers: [PlayerService],
+      providers: [PlayerService, PlayerRepository, CoachRepository, CompetitionRepository, TeamRepository,
+        {
+          provide: getModelToken('Team'), // Adjust the model name accordingly
+          useValue: {}, // Mock the model
+        },
+        {
+          provide: getModelToken('Player'), 
+          useValue: {}, 
+        },
+        {
+          provide: getModelToken('Coach'), // Adjust the model name accordingly
+          useValue: {}, // Mock the model
+        },
+        {
+          provide: getModelToken('Competition'), // Adjust the model name accordingly
+          useValue: {}, // Mock the model
+        }],
     }).compile();
 
     playerController = module.get<PlayerController>(PlayerController);

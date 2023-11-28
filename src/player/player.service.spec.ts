@@ -7,7 +7,7 @@ import { PlayerRepository } from './player.repository';
 import { Player, PlayerModel } from './entity/player.model';
 import { CoachModel, Team, TeamModel } from 'src/team/entity/team.model';
 import { Competition, CompetitionModel } from 'src/competition/entity/competition.model';
-import { ObjectId } from 'mongodb';
+import mongoose from 'mongoose';
 
 describe('PlayerService', () => {
   let playerService: PlayerService;
@@ -47,84 +47,155 @@ describe('PlayerService', () => {
   });
 
   describe('getPlayers', () => {
-    it('should return players if available', async () => {
-      const leagueCode = 'PL';
-      const competitionMock: CompetitionModel = {
-        _id: new ObjectId(),
-        name: "Premier League",
-        code: "PL",
-        areaCode: "ENG",
-      };
-      const teamsMock: TeamModel[] = [
+    const leagueCode = 'PL';
+
+    const teamName = 'Arsenal FC';
+
+    const competition: CompetitionModel = {
+      _id: new mongoose.Types.ObjectId(),
+      name: "Premier League",
+      code: "PL",
+      areaCode: "ENG",
+    } as CompetitionModel;
+
+    const team: TeamModel = {
+      _id: new mongoose.Types.ObjectId(),
+      name: "Arsenal FC",
+      areaName: "England",
+      shortName: "Arsenal",
+      tla: "ARS",
+      address: "75 Drayton Park London N5 1BU",
+      competitions: [competition._id],
+      // other properties
+    } as TeamModel;
+
+    const coach: CoachModel = {
+      _id: new mongoose.Types.ObjectId(),
+      name: 'Coach1',
+      nationality: 'Germany',
+      teams: [team._id],
+    } as CoachModel;
+
+    const teams: TeamModel[] = [
+      {
+        _id: new mongoose.Types.ObjectId(),
+        idApi: 57,
+        name: "Arsenal FC",
+        areaName: "England",
+        shortName: "Arsenal",
+        tla: "ARS",
+        address: "75 Drayton Park London N5 1BU",
+        competitions: [competition._id]
+      } as TeamModel,
+      {
+        _id: new mongoose.Types.ObjectId(),
+        idApi: 58,
+        name: "Aston Villa FC",
+        areaName: "England",
+        shortName: "Aston Villa",
+        tla: "AVL",
+        address: "Villa Park Birmingham B6 6HE",
+        competitions: [competition._id]
+      } as TeamModel,
+      // Add more teams as needed
+    ];
+    const players: PlayerModel[] =
+      [
         {
-          _id: new ObjectId(),
+          _id: new mongoose.Types.ObjectId(),
+          "name": "Vitalii Mykolenko",
+          "position": "Defence",
+          "dateOfBirth": "1999-05-29",
+          "nationality": "Ukraine",
+          "teams": [
+            team._id
+          ],
+        } as PlayerModel,
+        {
+          _id: new mongoose.Types.ObjectId(),
+          "name": "Nathan Patterson",
+          "position": "Defence",
+          "dateOfBirth": "2001-10-16",
+          "nationality": "Scotland",
+          "teams": [
+            team._id
+          ],
+        } as PlayerModel
+    ]
+
+    it('should return players if available', async () => {
+
+      competitionRepositoryMock.findOneByCode.mockResolvedValue(competition);
+      teamRepositoryMock.findByCompetition.mockResolvedValue(teams);
+      playerRepositoryMock.findByTeam.mockResolvedValue(undefined);
+
+      const result = await playerService.getPlayers(leagueCode);
+
+      expect(result).toEqual(players);
+    });
+
+    it('should return coaches if no players available', async () => {
+
+      const leagueCode = 'PL';
+      const competition: CompetitionModel = {
+        _id: new mongoose.Types.ObjectId(),
+        name: "Premier League",
+        code: "AM",
+        areaCode: "ENG",
+      } as CompetitionModel;
+
+      const teams: TeamModel[] = [
+        {
+          _id: new mongoose.Types.ObjectId(),
           idApi: 57,
-          name: "Arsenal FC",
+          name: "Arsenal FCX",
           areaName: "England",
           shortName: "Arsenal",
           tla: "ARS",
           address: "75 Drayton Park London N5 1BU",
-          competitions: [competitionMock._id]
-        },
+          competitions: [competition._id]
+        } as TeamModel,
         {
-          _id: new ObjectId(),
+          _id: new mongoose.Types.ObjectId(),
           idApi: 58,
-          name: "Aston Villa FC",
+          name: "Aston Villa FCX",
           areaName: "England",
           shortName: "Aston Villa",
           tla: "AVL",
           address: "Villa Park Birmingham B6 6HE",
-          competitions: [competitionMock._id]
-        },
+          competitions: [competition._id]
+        } as TeamModel,
         // Add more teams as needed
       ];
 
-      const playersMock: PlayerModel[] =
-        [
-          {
-            _id: new ObjectId(),
-            "name": "Vitalii Mykolenko",
-            "position": "Defence",
-            "dateOfBirth": "1999-05-29",
-            "nationality": "Ukraine",
-            "teams": [
-              teamsMock[0]._id
-            ],
-          },
-          {
-            _id: new ObjectId(),
-            "name": "Nathan Patterson",
-            "position": "Defence",
-            "dateOfBirth": "2001-10-16",
-            "nationality": "Scotland",
-            "teams": [
-              teamsMock[0]._id
-            ],
-          }]
+      const mockPlayersOrCoaches: PlayerModel[] = [
+        {
+          "_id": new mongoose.Types.ObjectId(),
+          "name": "James Garner",
+          "position": "Midfield",
+          "dateOfBirth": "2001-03-13",
+          "nationality": "England",
+          "teams": [
+            competition._id
+          ]
+        } as PlayerModel,
+      ];
 
-      competitionRepositoryMock.findOneByCode.mockResolvedValue(competitionMock);
-      teamRepositoryMock.findByCompetition.mockResolvedValue(teamsMock);
-      playerRepositoryMock.findByTeam.mockResolvedValue(playersMock);
+      const coach: CoachModel = {
+        _id: new mongoose.Types.ObjectId(),
+        name: 'Coach1',
+        nationality: 'Germany',
+        teams: [team._id],
+      }as CoachModel;
 
-      const result = await playerService.getPlayers(leagueCode);
-
-      expect(result).toEqual(playersMock);
-    });
-
-    it('should return coaches if no players available', async () => {
-      const leagueCode = 'PL';
-      const competitionMock = { /* mock competition data */ };
-      const teamsMock = [{ /* mock team data */ }];
-      const coachesMock = [{ /* mock coach data */ }];
-
-      competitionRepositoryMock.findOneByCode.mockResolvedValue(competitionMock);
-      teamRepositoryMock.findByCompetition.mockResolvedValue(teamsMock);
+      competitionRepositoryMock.findOneByCode.mockResolvedValue(competition);
+      teamRepositoryMock.findByCompetition.mockResolvedValue(teams);
       playerRepositoryMock.findByTeam.mockResolvedValue([]);
-      coachRepositoryMock.findByTeam.mockResolvedValue(coachesMock);
+      coachRepositoryMock.findByTeam.mockResolvedValue(undefined);
 
       const result = await playerService.getPlayers(leagueCode);
 
-      expect(result).toEqual(coachesMock);
+      expect(result).toEqual(coach);
     });
 
     it('should throw an error if competition not found', async () => {
@@ -132,9 +203,8 @@ describe('PlayerService', () => {
 
       competitionRepositoryMock.findOneByCode.mockResolvedValue(undefined);
 
-      await expect(playerService.getPlayers(leagueCode)).rejects.toThrow('Competition not found');
+      await expect(playerService.getPlayers(leagueCode)).rejects.toThrow('Failed to fetch players or coaches');
     });
 
-    // Add more test cases as needed
   });
 });

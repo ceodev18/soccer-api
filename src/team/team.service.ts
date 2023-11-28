@@ -3,9 +3,9 @@ import { Team, TeamModel } from './entity/team.model';
 import { PlayerService } from '../player/player.service';
 import { CoachModel } from './entity/team.model';
 import { TeamRepository } from './team.repository';
-import { PlayerRepository } from 'src/player/player.repository';
-import { CoachRepository } from 'src/player/coach.repository';
-import { PlayerModel } from 'src/player/entity/player.model';
+import { PlayerRepository } from '../player/player.repository';
+import { CoachRepository } from '../player/coach.repository';
+import { PlayerModel } from '../player/entity/player.model';
 @Injectable()
 export class TeamService {
     constructor(
@@ -16,7 +16,7 @@ export class TeamService {
     async getTeamByName(name: string): Promise<any> {
         // Your logic to fetch the team by name (replace the following line with your actual implementation)
         const team: TeamModel = await this.teamRepository.findTeamByName(name);
-        
+        console.log(team);
         // If the team is found and player inclusion is requested
         if (team) {
             let response: any = {team};

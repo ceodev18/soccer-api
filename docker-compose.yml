@@ -18,7 +18,7 @@ services:
     ports:
       - "3001:3000"
     environment:
-      MONGO_URI: mongodb://localhost:27018/your-database   # Actualiza el nombre de la base de datos según tus necesidades
+      MONGO_URI: mongodb://localhost:27018/soccer-database   # Actualiza el nombre de la base de datos según tus necesidades
 
 volumes:
   mongodb-data:

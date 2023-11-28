@@ -19,19 +19,40 @@ export class FootballApiService {
     
     private apiUrl = process.env.API_URL || 'http://api.football-data.org/v4';
     private apiKey = process.env.API_TOKEN || 'your_default_api_token';
+    private callsMade = 0;
+    private readonly maxCallsPerMinute = 10;
+    private readonly minuteInMillis = 60 * 1000;
+    private lastCallTimestamp = Date.now();
+
 
     private async makeRequest(endpoint: string) {
+      await this.waitIfNeeded();
         try {
             const response = await axios.get(`${this.apiUrl}${endpoint}`, {
                 headers: {
                     'X-Auth-Token': this.apiKey,
                 },
             });
+            this.callsMade++;
             return response.data;
         } catch (error) {
             throw new Error(`Error fetching data: ${error.message}`);
         }
     }
+
+    private async waitIfNeeded(): Promise<void> {
+      if (this.callsMade >= this.maxCallsPerMinute) {
+          const timeElapsed = Date.now() - this.lastCallTimestamp;
+          if (timeElapsed < this.minuteInMillis) {
+              const delay = this.minuteInMillis - timeElapsed;
+              await new Promise(resolve => setTimeout(resolve, delay));
+              this.callsMade = 0;
+          } else {
+              this.callsMade = 0;
+          }
+      }
+      this.lastCallTimestamp = Date.now();
+  }
 
     async getTeams(competitionCode: string, competition: Competition):Promise<Team[]> {
       let teamsSaved: Team[] = []; // Initialize as an array
@@ -56,7 +77,7 @@ export class FootballApiService {
         
     }
 
-    private async saveTeam(team: any, competition: Competition): Promise<Team> {
+    async saveTeam(team: any, competition: Competition): Promise<Team> {
       try {
         // Check if the team already exists
         const existingTeam = await this.teamRepository.findOneByApiId(team.id);

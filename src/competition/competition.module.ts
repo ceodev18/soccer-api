@@ -4,7 +4,7 @@ import { CompetitionController } from './competition.controller';
 import { CompetitionRepository } from './competition.repository';
 import { Competition, CompetitionSchema } from './entity/competition.model';
 import { MongooseModule } from '@nestjs/mongoose';
-import { DatabaseConnection } from 'src/database/database.connection';
+import { DatabaseConnection } from '../database/database.connection';
 
 @Module({
   imports: [

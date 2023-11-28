@@ -8,6 +8,10 @@ import axios from 'axios';
 import { Competition, CompetitionModel } from 'src/competition/entity/competition.model';
 import { TeamModel } from 'src/team/entity/team.model';
 import { ObjectId } from 'mongodb';
+import mongoose from 'mongoose';
+import { PlayerModel } from 'src/player/entity/player.model';
+import { getModelToken } from '@nestjs/mongoose';
+import { CoachRepository } from '../player/coach.repository';
 
 jest.mock('axios');
 
@@ -24,7 +28,9 @@ describe('FootballApiService', () => {
         {
           provide: CompetitionRepository,
           useFactory: () => ({
+            findOneByApiId: jest.fn(),
             create: jest.fn(),
+            updateOneById: jest.fn(),
           }),
         },
         {
@@ -43,6 +49,26 @@ describe('FootballApiService', () => {
             updateOneById: jest.fn(),
           }),
         },
+        CompetitionRepository,
+        TeamRepository,
+        PlayerRepository,
+        CoachRepository,
+        {
+          provide: getModelToken('Competition'), // Adjust the model name accordingly
+          useValue: {}, // Mock the model
+        },
+        {
+          provide: getModelToken('Team'), // Adjust the model name accordingly
+          useValue: {}, // Mock the model
+        },
+        {
+          provide: getModelToken('Player'), // Adjust the model name accordingly
+          useValue: {}, // Mock the model
+        },
+        {
+          provide: getModelToken('Coach'), // Adjust the model name accordingly
+          useValue: {}, // Mock the model
+        }
       ],
     }).compile();
 
@@ -84,7 +110,7 @@ describe('FootballApiService', () => {
           tla: "ARS",
           address: "75 Drayton Park London N5 1BU",
           competitions: team.competitions,
-        };
+        } as TeamModel;
 
         return Promise.resolve(mockTeamModel);
       });
@@ -124,24 +150,24 @@ describe('FootballApiService', () => {
 
   describe('saveTeam', () => {
     it('should create a new team', async () => {
-      const teamData = {
-        id: 1,
+      const teamData: TeamModel = {
+        _id: new mongoose.Types.ObjectId(),
         name: 'Team A',
         tla: 'TA',
         shortName: 'A',
-        area: { name: 'Area A' },
+        areaName: 'Area A',
         address: 'Team A Address',
-      };
+      } as TeamModel;
 
-      const competition = {
-        _id: 'competition-id',
+      const competition: Competition = {
+        _id: new mongoose.Types.ObjectId(),
         name: 'Competition Name',
         code: 'COMP',
         areaCode: 'AREA',
       };
 
       teamRepositoryMock.findOneByApiId.mockResolvedValue(null);
-      teamRepositoryMock.create.mockImplementation((team) => Promise.resolve(team));
+      teamRepositoryMock.create.mockImplementation((team) => Promise.resolve(teamData));
 
       const result = await footballApiService.saveTeam(teamData, competition);
 
@@ -169,32 +195,32 @@ describe('FootballApiService', () => {
     });
 
     it('should update an existing team', async () => {
-      const teamData = {
-        id: 1,
+      const teamData: TeamModel = {
+        _id: new mongoose.Types.ObjectId(),
         name: 'Team A',
         tla: 'TA',
         shortName: 'A',
-        area: { name: 'Area A' },
+        areaName: 'Area A',
         address: 'Team A Address',
-      };
+      } as TeamModel;
 
-      const existingTeam = {
-        _id: 'team-id',
+      const existingTeam: TeamModel = {
+        _id: new mongoose.Types.ObjectId(),
         idApi: 1,
         name: 'Team A',
         tla: 'TA',
         shortName: 'A',
         areaName: 'Area A',
         address: 'Team A Address',
-        competitions: ['competition-id'],
-      };
+        competitions: [teamData._id],
+      } as TeamModel;
 
-      const competition = {
-        _id: 'competition-id',
+      const competition: CompetitionModel = {
+        _id: new mongoose.Types.ObjectId(),
         name: 'Competition Name',
         code: 'COMP',
         areaCode: 'AREA',
-      };
+      } as CompetitionModel;
 
       teamRepositoryMock.findOneByApiId.mockResolvedValue(existingTeam);
       teamRepositoryMock.updateOneById.mockResolvedValue(existingTeam);
@@ -229,12 +255,12 @@ describe('FootballApiService', () => {
         address: 'Team A Address',
       };
 
-      const competition = {
-        _id: 'competition-id',
+      const competition: Competition= {
+        _id: new mongoose.Types.ObjectId(),
         name: 'Competition Name',
         code: 'COMP',
         areaCode: 'AREA',
-      };
+      }as Competition;
 
       teamRepositoryMock.findOneByApiId.mockRejectedValue(new Error('Failed to fetch team'));
       teamRepositoryMock.create.mockResolvedValue(undefined);
@@ -249,15 +275,17 @@ describe('FootballApiService', () => {
 
   describe('getCompetition', () => {
     it('should fetch and create a competition', async () => {
-      const leagueCode = 'your-league-code';
+      const leagueCode = 'PL';
 
-      const competitionData = {
+      const competitionData:CompetitionModel = {
+        _id: new mongoose.Types.ObjectId(),
         name: 'Competition Name',
         code: 'COMP',
-        area: { code: 'AREA' },
-      };
+        areaCode:'AREA' ,
+      }as CompetitionModel;
 
-      axios.get.mockResolvedValue(competitionData);
+      
+      jest.spyOn(axios, 'get').mockResolvedValue(competitionData);
 
       competitionRepositoryMock.create.mockResolvedValue(competitionData);
 
@@ -270,7 +298,7 @@ describe('FootballApiService', () => {
     it('should handle errors when fetching a competition', async () => {
       const leagueCode = 'your-league-code';
 
-      axios.get.mockRejectedValue(new Error('Failed to fetch competition'));
+      jest.spyOn(axios, 'get').mockRejectedValue(new Error('Failed to fetch competition'));
 
       competitionRepositoryMock.create.mockResolvedValue(undefined);
 
@@ -282,25 +310,38 @@ describe('FootballApiService', () => {
 
   describe('getPlayers', () => {
     it('should fetch and save players', async () => {
-      const teamData = {
-        idApi: 1,
-        squad: [
-          { id: 1, name: 'Player A', /* other player data */ },
-          // Add more players as needed
-        ],
-      };
 
-      const existingPlayer = {
-        _id: 'player-id',
-        idApi: 1,
+      const competition: CompetitionModel = {
+        _id: new mongoose.Types.ObjectId(),
+        name: "Premier League",
+        code: "PL",
+        areaCode: "ENG",
+      } as CompetitionModel;
+
+      const teamData: TeamModel = {
+        _id: new mongoose.Types.ObjectId(),
+        name: "Arsenal FC",
+        areaName: "England",
+        shortName: "Arsenal",
+        tla: "ARS",
+        address: "75 Drayton Park London N5 1BU",
+        competitions: [competition._id],
+        // other properties
+      } as TeamModel;
+  
+
+      const existingPlayer: PlayerModel = {
+        _id: new mongoose.Types.ObjectId(),
         name: 'Player A',
-        /* other player data */
-        teams: ['team-id'],
-      };
+        position: "Midfield",
+        dateOfBirth: "2001-03-13",
+        nationality: "England",
+        teams: [teamData._id],
+      } as PlayerModel;
 
-      axios.get.mockResolvedValue(teamData);
+      jest.spyOn(axios, 'get').mockResolvedValue(teamData);
 
-      teamRepositoryMock.findOneByApiId.mockResolvedValue({ _id: 'team-id', idApi: 1 });
+      teamRepositoryMock.findOneByApiId.mockResolvedValue(teamData);
       playerRepositoryMock.findOneByApiId.mockResolvedValue(existingPlayer);
       playerRepositoryMock.updateOneById.mockResolvedValue(existingPlayer);
       playerRepositoryMock.create.mockResolvedValue(undefined);
@@ -314,17 +355,28 @@ describe('FootballApiService', () => {
     });
 
     it('should handle errors when fetching players', async () => {
-      const teamData = {
-        idApi: 1,
-        squad: [
-          { id: 1, name: 'Player A', /* other player data */ },
-          // Add more players as needed
-        ],
-      };
+      const competition: CompetitionModel = {
+        _id: new mongoose.Types.ObjectId(),
+        name: "Premier League",
+        code: "PL",
+        areaCode: "ENG",
+      } as CompetitionModel;
 
-      axios.get.mockRejectedValue(new Error('Failed to fetch players'));
+      const teamData: TeamModel = {
+        _id: new mongoose.Types.ObjectId(),
+        name: "Arsenal FC",
+        areaName: "England",
+        shortName: "Arsenal",
+        tla: "ARS",
+        address: "75 Drayton Park London N5 1BU",
+        competitions: [competition._id],
+        // other properties
+      } as TeamModel;
 
-      teamRepositoryMock.findOneByApiId.mockResolvedValue({ _id: 'team-id', idApi: 1 });
+      
+      jest.spyOn(axios, 'get').mockRejectedValue(new Error('Failed to fetch players'));
+
+      teamRepositoryMock.findOneByApiId.mockResolvedValue(teamData);
       playerRepositoryMock.findOneByApiId.mockResolvedValue(undefined);
       playerRepositoryMock.create.mockResolvedValue(undefined);
 
@@ -337,6 +389,23 @@ describe('FootballApiService', () => {
     });
 
     it('should handle errors when saving players', async () => {
+      const competition: CompetitionModel = {
+        _id: new mongoose.Types.ObjectId(),
+        name: "Premier League",
+        code: "PL",
+        areaCode: "ENG",
+      } as CompetitionModel;
+      
+      const team: TeamModel = {
+        _id: new mongoose.Types.ObjectId(),
+        name: "Arsenal FC",
+        areaName: "England",
+        shortName: "Arsenal",
+        tla: "ARS",
+        address: "75 Drayton Park London N5 1BU",
+        competitions: [competition._id],
+        // other properties
+      } as TeamModel;
       const teamData = {
         idApi: 1,
         squad: [
@@ -345,17 +414,19 @@ describe('FootballApiService', () => {
         ],
       };
 
-      const existingPlayer = {
-        _id: 'player-id',
-        idApi: 1,
+      const existingPlayer: PlayerModel = {
+        _id: new mongoose.Types.ObjectId(),
         name: 'Player A',
-        /* other player data */
-        teams: ['team-id'],
-      };
+        position: "Midfield",
+        dateOfBirth: "2001-03-13",
+        nationality: "England",
+        teams: [team._id],
+      } as PlayerModel;
 
-      axios.get.mockResolvedValue(teamData);
+      
+      jest.spyOn(axios, 'get').mockResolvedValue(teamData);
 
-      teamRepositoryMock.findOneByApiId.mockResolvedValue({ _id: 'team-id', idApi: 1 });
+      teamRepositoryMock.findOneByApiId.mockResolvedValue(team);
       playerRepositoryMock.findOneByApiId.mockResolvedValue(existingPlayer);
       playerRepositoryMock.updateOneById.mockRejectedValue(new Error('Failed to update player'));
 

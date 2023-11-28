@@ -7,7 +7,7 @@ import { DatabaseConnection } from '../database/database.connection';
 import { Coach, CoachSchema, Team, TeamSchema } from './entity/team.model';
 import { CoachRepository } from '../player/coach.repository';
 import { PlayerRepository } from '../player/player.repository';
-import { Player, PlayerSchema } from 'src/player/entity/player.model';
+import { Player, PlayerSchema } from '../player/entity/player.model';
 
 @Module({
   imports: [
