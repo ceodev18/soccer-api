@@ -1,6 +1,6 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import mongoose, { Model } from 'mongoose';
 import { Team, TeamModel } from './entity/team.model';
 
 
@@ -31,5 +31,14 @@ export class TeamRepository {
 
   async deleteOneById(id: string): Promise<void> {
     await this.model.findByIdAndDelete(id).exec();
+  }
+  async findOneByApiId(idApi: number): Promise<TeamModel | null> {
+    return this.model.findOne({ idApi }).exec();
+  }
+  async findByCompetition(competitionId: mongoose.Types.ObjectId): Promise<TeamModel[]> {
+    return this.model.find({ competitions: competitionId }).exec();
+  }
+  async findTeamByName(name: string): Promise<TeamModel | null> {
+    return this.model.findOne({ name: { $regex: new RegExp(`^${name}$`, 'i') } }).exec();
   }
 }

@@ -1,11 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import axios from 'axios';
-import { CompetitionRepository } from 'src/competition/competition.repository';
-import { Competition, CompetitionModel } from 'src/competition/entity/competition.model';
-import { Player } from 'src/player/entity/player.model';
-import { PlayerRepository } from 'src/player/player.repository';
-import { Team, TeamModel } from 'src/team/entity/team.model';
-import { TeamRepository } from 'src/team/team.repository';
+import { CompetitionRepository } from '../competition/competition.repository';
+import { Competition, CompetitionModel } from '../competition/entity/competition.model';
+import { Player } from '../player/entity/player.model';
+import { PlayerRepository } from '../player/player.repository';
+import { Coach, Team, TeamModel } from '../team/entity/team.model';
+import { TeamRepository } from '../team/team.repository';
+import { CoachRepository } from '../player/coach.repository';
 
 @Injectable()
 export class FootballApiService {
@@ -13,6 +14,7 @@ export class FootballApiService {
         private readonly competitionRepository: CompetitionRepository,
         private readonly teamRepository: TeamRepository,
         private readonly playerRepository: PlayerRepository,
+        private readonly coachRepository: CoachRepository,
         ) {}
     
     private apiUrl = process.env.API_URL || 'http://api.football-data.org/v4';
@@ -31,72 +33,111 @@ export class FootballApiService {
         }
     }
 
-    async getTeams(competitionCode: string, competition: Competition):Promise< TeamModel[]> {
-        const listOfTeams = this.makeRequest(`/competitions/${competitionCode}/teams`);
-        
+    async getTeams(competitionCode: string, competition: Competition):Promise<Team[]> {
+      let teamsSaved: Team[] = []; // Initialize as an array
+
         try {
-            console.log(listOfTeams);
-            console.log(competition);
-            // if (listOfTeams.teams && Array.isArray(listOfTeams.teams)) {
-            //     const teams = listOfTeams.teams;
-          
-            //     // Iterate through the teams and save them
-            //     for (const team of teams) {
-            //       await this.saveTeam(team, competition);
-            //     }
-            //   }
-        } catch (error) {
+            const {teams} = await this.makeRequest(`/competitions/${competitionCode}/teams`);
             
-        }
-        return null;
+            if (teams && Array.isArray(teams)) {
+                // Use Promise.all to parallelize team creation
+                await Promise.all(teams.map(async (team: any) => teamsSaved.push(await this.saveTeam(team, competition))));
+            }
+        
+            // If needed, return the list of teams or any other meaningful result
+            //return teams.map((team: any) => /* transform to TeamModel if needed */);
+            return teamsSaved;
+          } catch (error) {
+            // Handle errors appropriately
+            console.error('Error fetching or saving teams:', error);
+            throw new ConflictException('Failed to fetch or save teams');
+            
+          }
         
     }
 
-    private async saveTeam(team: any, competition: Competition) {
-        const newTeam = new Team({
+    private async saveTeam(team: any, competition: Competition): Promise<Team> {
+      try {
+        // Check if the team already exists
+        const existingTeam = await this.teamRepository.findOneByApiId(team.id);
+    
+        if (existingTeam) {
+          // If the team exists, update the competitions property
+          existingTeam.competitions.push(competition._id);
+          await this.teamRepository.updateOneById(existingTeam._id.toString(), { competitions: existingTeam.competitions });
+    
+          return existingTeam;
+        } else {
+          // If the team doesn't exist, create a new one
+          const newTeam = new Team({
+            idApi: team.id,
             name: team.name,
             tla: team.tla,
             shortName: team.shortName,
-            areaName: team.areaName,
+            areaName: team.area.name,
             address: team.address,
             competitions: [competition._id],
-        });
+          });
     
-        await this.teamRepository.create(newTeam);
+          await this.teamRepository.create(newTeam);
+          return newTeam;
+        }
+      } catch (error) {
+        // Handle errors appropriately
+        console.error('Error saving team:', error);
+        throw new ConflictException('Failed to save team');
       }
+    }
       
-    async getCompetition(leagueCode: string) {
+    async getCompetition(leagueCode: string): Promise<Competition> {
       const data = await this.makeRequest(`/competitions/${leagueCode}`);
       const competitionData: Competition = new Competition({
         name: data.name,
         code: data.code,
         areaCode: data.area.code,
       });
-      
-      return this.competitionRepository.create(competitionData);
+      await this.competitionRepository.create(competitionData);
+      return competitionData;
     }
 
     async getPlayers(teams: Team[]): Promise<void> {
         await Promise.all(
             teams.map(async (team) => {
               try {
-                const singleTeam = await this.makeRequest(`/teams/${team._id}`);
-                await this.savePlayers(singleTeam);
+                const singleTeam = await this.makeRequest(`/teams/${team.idApi}`);
+                await this.savePlayers(team, singleTeam);
               } catch (error) {
               }
             })
           );
     }
-    private async savePlayers(team: any):Promise<void> {
-        if(team.squad.length == 0){
-            //only save coach
-        }else{
-            await Promise.all(
-                team.squad.map(async (player) => {
-                    await this.playerRepository.create(player, team.id);
-                })
-            );
-            
-        }
+    private async savePlayers(teamSaved: Team, teamApi: any): Promise<void> {
+      if (teamApi.squad.length === 0) {
+        // Only save coach
+        const {coach} = teamApi;
+        const competitionData: Coach = new Coach({
+          name: coach.name,
+          dateOfBirth: coach.dateOfBirth,
+          nationality: coach.nationality,
+          teams:[teamSaved._id]
+        });
+        await this.coachRepository.create(competitionData);
+      } else {
+        await Promise.all(
+          teamApi.squad.map(async (player) => {
+            // Check if the player already exists
+            const existingPlayer = await this.playerRepository.findOneByApiId(player.id);
+    
+            if (existingPlayer) {
+              // If the player exists, update the teams property
+              existingPlayer.teams.push(teamSaved._id);
+              await this.playerRepository.updateOneById(existingPlayer._id.toString(), { teams: existingPlayer.teams });
+            } else {
+              // If the player doesn't exist, create a new one
+              await this.playerRepository.create(player, teamSaved._id);
+            }
+          })
+        );
       }
+    }
 }

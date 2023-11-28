@@ -7,7 +7,7 @@ export class Competition {
   code: string;
   areaCode: string;
 
-  constructor(init: Competition) {
+  constructor(init: { _id?: mongoose.Types.ObjectId; name: string; code: string; areaCode: string }) {
     this._id = init._id || new mongoose.Types.ObjectId();
     this.name = init.name;
     this.code = init.code;

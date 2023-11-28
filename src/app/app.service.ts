@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { FootballApiService } from 'src/football-api/football-api.service';
+import { FootballApiService } from '../football-api/football-api.service';
 
 @Injectable()
 export class AppService {

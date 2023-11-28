@@ -7,19 +7,15 @@ $ docker-compose build
 # run
 $ docker-compose up -d
 
+## Libraries used
+ axios - make  REST API calls
+ dotenv - to load environment variables
+ mongoose - ORM for mongoDB
+ jest - for testing
 
-```
+## Reason to use MongoDB
+ - Schema-less Design (In this case the data can be dinamyc)
+ - Scalability
+ - Flexibility
 
-## Support
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://kamilmysliwiec.com)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](LICENSE).

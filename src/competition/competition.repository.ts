@@ -18,6 +18,7 @@ export class CompetitionRepository {
 
     if (existingCompetition) {
       // Handle validation error 
+      console.log('Handle validation error ');
       throw new ConflictException('Competition with the same code already exists');
     }
     const createdCompetition = new this.model(competitionData);
@@ -38,5 +39,8 @@ export class CompetitionRepository {
 
   async deleteOneById(id: string): Promise<void> {
     await this.model.findByIdAndDelete(id).exec();
+  }
+  async findOneByCode(leagueCode: string): Promise<CompetitionModel | null> {
+    return this.model.findOne({ code: leagueCode }).exec();
   }
 }

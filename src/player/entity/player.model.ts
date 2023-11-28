@@ -4,7 +4,7 @@ import * as mongoose from 'mongoose';
 export class Player {
   _id?: mongoose.Types.ObjectId;
   name: string;
-  position: string;
+  position?: string;
   dateOfBirth: string;
   nationality: string;
   teams: mongoose.Types.ObjectId[]

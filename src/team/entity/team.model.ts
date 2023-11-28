@@ -3,6 +3,7 @@ import * as mongoose from 'mongoose';
 
 export class Team {
   _id?: mongoose.Types.ObjectId;
+  idApi:number;
   name: string;
   tla: string;
   shortName: string;
@@ -12,6 +13,7 @@ export class Team {
 
   constructor(init: Team) {
     this._id = init._id || new mongoose.Types.ObjectId();
+    this.idApi = init.idApi;
     this.name = init.name;
     this.tla = init.tla;
     this.shortName = init.shortName;
@@ -23,6 +25,7 @@ export class Team {
 
 export interface TeamModel extends mongoose.Document {
   _id: mongoose.Types.ObjectId;
+  idApi:number;
   name: string;
   tla: string;
   shortName: string;
@@ -32,7 +35,8 @@ export interface TeamModel extends mongoose.Document {
 }
 
 export const TeamSchema = new mongoose.Schema(
-  {
+  { 
+    idApi: { required: true, type: Number },
     name: { required: true, type: String },
     tla: { required: true, type: String },
     shortName: { required: true, type: String },
@@ -50,19 +54,21 @@ TeamSchema.virtual('players', {
 });
 
 export class Coach {
+  _id?: mongoose.Types.ObjectId;
   name: string;
   dateOfBirth: string;
   nationality: string;
-  team: mongoose.Types.ObjectId[]
+  teams: mongoose.Types.ObjectId[]
 
   constructor(init: Coach) {
     this.name = init.name;
     this.dateOfBirth = init.dateOfBirth;
     this.nationality = init.nationality;
-    this.team = init.team || [];
+    this.teams = init.teams || [];
   }
 }
 export interface CoachModel extends mongoose.Document {
+  _id: mongoose.Types.ObjectId;
   name: string;
   dateOfBirth: string;
   nationality: string;

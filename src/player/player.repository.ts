@@ -1,7 +1,7 @@
 // database/competition/competition.repository.ts
 import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import mongoose, { Model } from 'mongoose';
 import { Player, PlayerModel } from './entity/player.model';
 
 
@@ -60,5 +60,16 @@ export class PlayerRepository {
 
   async deleteOneById(id: string): Promise<void> {
     await this.model.findByIdAndDelete(id).exec();
+  }
+  
+  async findOneByApiId(apiId: number): Promise<PlayerModel | null> {
+    return this.model.findOne({ idApi: apiId }).exec();
+  }
+  async findByTeam(teamId: mongoose.Types.ObjectId): Promise<PlayerModel[]> {
+    return this.model.find({ teams: teamId }).exec();
+  }
+  async exists(conditions: Record<string, any>): Promise<boolean> {
+    const player = await this.model.findOne(conditions).exec();
+    return !!player;
   }
 }
